@@ -9,9 +9,9 @@ namespace nsqphp\Client;
  */
 abstract class AbstractProxyClient implements ProxyClient {
 
-    private $host;
+    public $host;
 
-    private $port;
+    public $port;
 
     public function __construct($host = "localhost",$port = 4151) {
         $this->host = $host;

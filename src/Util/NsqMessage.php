@@ -10,8 +10,23 @@ namespace nsqphp\Util;
  */
 class NsqMessage {
 
+    const PUB = "PUB";
+    /**
+     * 发送消息体
+     *
+     *  PUB <topic_name>\n
+     *  [ 4-byte size in bytes ][ N-byte binary data ]
+     *  <topic_name> - a valid string (optionally having #ephemeral suffix)
+     *
+     *
+     * @param string $topic
+     * @param string $message
+     * @return string
+     */
     public static function pub(string $topic,string $message):string {
-        return "";
+        // pub 的消息体
+
+        return self::packet(self::PUB,$topic,$message);
     }
 
     public static function nop():string  {
@@ -28,5 +43,25 @@ class NsqMessage {
 
     public static function rdy() {
 
+    }
+
+    /**
+     * 信息打包
+     *
+     * @param string $single    打包的命令
+     * @param null   $param     topic 信息
+     * @param null   $message   发送的信息
+     * @return string
+     */
+    public static function packet(string $single, $param = null,$message = null) {
+        //PUB <topic_name>\n
+        //  [ 4-byte size in bytes ][ N-byte binary data ]
+        //  <topic_name> - a valid string (optionally having #ephemeral suffix)
+
+        if ($message != null) {
+            $message = pack("N",strlen($message)).$message;
+        }
+
+        return sprintf("%s %s\n%s",$single,$param,$message);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 namespace nsqphp\Client;
+use nsqphp\Util\HTTP;
 
 /**
  * Http 实现消息的发送和接受
@@ -9,12 +10,31 @@ namespace nsqphp\Client;
  */
 class HttpClient extends AbstractProxyClient  {
 
+    /**
+     * nsqd 的 publish url
+     *
+     * @var string
+     */
+    private $nsqdUrl = "";
+
+    public function setUrl($nsqdUrl){
+        $this->nsqdUrl = $nsqdUrl;
+    }
+
     public function read():string {
         return "";
     }
 
+    /**
+     * curl -d "<message>" http://127.0.0.1:4151/pub?topic=name
+     *
+     * @param string $buffer
+     * @return array
+     */
     public function write(string $buffer) {
+        $url = sprintf('http://%s:%d/%s', $this->host, $this->port, $this->nsqdUrl);
 
+        return HTTP::post($url, $buffer);
     }
 
     public function reconnect() {
