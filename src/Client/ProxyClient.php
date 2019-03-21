@@ -9,7 +9,7 @@ namespace nsqphp\Client;
  */
 interface ProxyClient {
 
-    public function read(): string ;
+    public function read(int $length): string ;
 
     public function write(string $buffer);
 

@@ -111,7 +111,6 @@ class NsqClient {
      * @return bool
      */
     private function publishViaTcp(String $topic,String $message){
-        // todo
         // 封装 message 后续可以封装成为一个方法,因为消息的多样性
         try {
             $formatMessage = NsqMessage::pub($topic,$message);
@@ -119,15 +118,12 @@ class NsqClient {
             $this->proxyClient->write($formatMessage);
 
             // 处理响应
-            $nsqRes = $this->proxyClient->read();
-
-            $nsqResFormatArr = ResponseNsq::readFormat($nsqRes);
+            $nsqResFormatArr = ResponseNsq::readFormat($this->proxyClient);
 
             // 排除心跳
             $isHeartBeat = ResponseNsq::isHeartBeat($nsqResFormatArr);
             while($isHeartBeat){
-                $nsqRes = $this->proxyClient->read();
-                $nsqResFormatArr = ResponseNsq::readFormat($nsqRes);
+                $nsqResFormatArr = ResponseNsq::readFormat($this->proxyClient);
             }
 
             $isPubSuccess = ResponseNsq::isOk($nsqResFormatArr);
@@ -142,6 +138,8 @@ class NsqClient {
             // 发送失败的 处理
             $this->proxyClient->reconnect();
         }
+
+        return true;
     }
 
     public function subscribe() {

@@ -9,7 +9,14 @@ namespace nsqphp\Client;
  */
 class SwooleClient extends AbstractProxyClient {
 
-    public function read():string {
+    /**
+     * TCP的默认连接是 4150
+     *
+     * @var int
+     */
+    public $port = 4150;
+
+    public function read(int $length):string {
         return "";
     }
 

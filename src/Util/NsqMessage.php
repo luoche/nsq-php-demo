@@ -25,7 +25,6 @@ class NsqMessage {
      */
     public static function pub(string $topic,string $message):string {
         // pub 的消息体
-
         return self::packet(self::PUB,$topic,$message);
     }
 

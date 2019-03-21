@@ -18,7 +18,7 @@ abstract class AbstractProxyClient implements ProxyClient {
         $this->port = $port;
     }
 
-    public function read():string {
+    public function read(int $length):string {
         return "";
     }
 

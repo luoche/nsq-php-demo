@@ -11,6 +11,13 @@ use nsqphp\Util\HTTP;
 class HttpClient extends AbstractProxyClient  {
 
     /**
+     * HTTP 的默认连接是 4151
+     *
+     * @var int
+     */
+    public $port = 4151;
+
+    /**
      * nsqd 的 publish url
      *
      * @var string
@@ -21,7 +28,7 @@ class HttpClient extends AbstractProxyClient  {
         $this->nsqdUrl = $nsqdUrl;
     }
 
-    public function read():string {
+    public function read(int $length):string {
         return "";
     }
 
