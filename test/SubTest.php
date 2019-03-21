@@ -7,15 +7,17 @@
  * @datetime : 2019/3/20 08:11 08
  */
 
-$nsqConf = [
-    ['host' => '192.168.1.50', 'port' => 4151],
-    ['host' => '192.168.1.51', 'port' => 4151]
+$lookupConf = [
+    ['host' => '192.168.1.51', 'port' => 4161],
 ];
 
 $nsqClient = new \nsqphp\NsqClient();
-$nsqClient->publishTo($nsqConf);
 
 $topic = "test";
-$message = "Hello Nsq";
+$channel = "test";
 
-$nsqClient->publish($topic,$message);
+$nsqClient->subscribe($lookupConf,$topic,$channel,$this->tempCallback());
+
+function tempCallback($conn,Message $msg){
+
+}

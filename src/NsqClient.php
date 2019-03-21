@@ -8,6 +8,8 @@ use nsqphp\Client\TcpClient;
 use nsqphp\Exception\NetworkSocketException;
 use nsqphp\Exception\NsqException;
 use nsqphp\Logger\Logger;
+use nsqphp\Server\SwooleServer;
+use nsqphp\Util\Lookup;
 use nsqphp\Util\NsqHttpMessage;
 use nsqphp\Util\NsqMessage;
 use nsqphp\Util\ResponseNsq;
@@ -144,8 +146,39 @@ class NsqClient {
         return true;
     }
 
-    public function subscribe() {
-        // todo
+    /**
+     * 订阅一个频道
+     *
+     * @param array $lookupConf
+     * @param string $topic
+     * @param string $channel
+     * @param string $callback
+     * @return NsqClient
+     */
+    public function subscribe(array $lookupConf,string $topic,string $channel,$callback) {
+        if (!is_callable($callback)) {
+            throw new NsqException("Callback is invalid; Need a PHP callable");
+        }
+
+        // 1. 通过 lookupConf 找到所有的host
+        //记录日志 todo
+        $nsqdArr = Lookup::getNode($lookupConf,$topic);
+        if (empty($nsqdArr)) {
+            throw new NsqException("There is no available nsqd for this topic ".$topic);
+        }
+        Logger::ins()->info("Found the host connect to you nsqd topic".$topic);
+        // 遍历所有节点
+        foreach ($nsqdArr as $ko => $nsqdConf) {
+            // 建立连接 使用 Stream 或者 swoole
+            // todo Tcp
+            $conn = new SwooleServer($nsqdConf['host'],$nsqdArr['port']);
+            Logger::ins()->info("Connent to you nsqd".$conn->getDomain());
+
+            // 所有的信息 放到 此步完成
+            $conn->getSocket();
+        }
+
+        return $this;
     }
 
     /**

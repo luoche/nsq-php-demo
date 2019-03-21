@@ -10,7 +10,14 @@ namespace nsqphp\Util;
  */
 class Lookup {
 
-    public static function getNode() {
-
+    /**
+     * 根据lookup查找对应的nsqd 节点
+     *
+     * @param array $lookupConf
+     * @return array
+     */
+    public static function getNode(array $lookupConf):array {
+        return [];
     }
+
 }
