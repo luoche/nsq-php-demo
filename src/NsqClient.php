@@ -123,6 +123,8 @@ class NsqClient {
             // 排除心跳
             $isHeartBeat = ResponseNsq::isHeartBeat($nsqResFormatArr);
             while($isHeartBeat){
+                $this->proxyClient->write(NsqMessage::nop());
+
                 $nsqResFormatArr = ResponseNsq::readFormat($this->proxyClient);
             }
 
