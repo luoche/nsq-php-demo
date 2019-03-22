@@ -161,8 +161,9 @@ class NsqClient {
         }
 
         // 1. 通过 lookupConf 找到所有的host
-        //记录日志 todo
-        $nsqdArr = Lookup::getNode($lookupConf,$topic);
+        //记录日志
+        $lookup = new Lookup($lookupConf);
+        $nsqdArr = $lookup->getNode($topic);
         if (empty($nsqdArr)) {
             throw new NsqException("There is no available nsqd for this topic ".$topic);
         }
@@ -172,6 +173,9 @@ class NsqClient {
             // 建立连接 使用 Stream 或者 swoole
             // todo Tcp
             $conn = new SwooleServer($nsqdConf['host'],$nsqdArr['port']);
+
+            $conn->setParams($topic, $channel, $callback);
+
             Logger::ins()->info("Connent to you nsqd".$conn->getDomain());
 
             // 所有的信息 放到 此步完成

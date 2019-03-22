@@ -46,6 +46,7 @@ class SwooleServer extends AbstractProxyServer {
      */
     private $timeout = 3;
 
+
     public function reconnect() {
 
     }
@@ -112,7 +113,7 @@ class SwooleServer extends AbstractProxyServer {
         // 3. 告知 ready
         $this->socket->send(NsqMessage::magic());
 
-        $this->socket->send(NsqMessage::sub($this->host, $this->port));
+        $this->socket->send(NsqMessage::sub($this->topic, $this->channel));
 
         $this->socket->send(NsqMessage::rdy(1));
 

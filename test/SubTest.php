@@ -8,7 +8,8 @@
  */
 
 $lookupConf = [
-    ['host' => '192.168.1.51', 'port' => 4161],
+    'host' => '192.168.1.51',
+    'port' => 4161,
 ];
 
 $nsqClient = new \nsqphp\NsqClient();

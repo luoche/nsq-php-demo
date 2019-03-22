@@ -13,12 +13,41 @@ abstract class AbstractProxyServer implements ProxyServer  {
 
     public $port;
 
-    public $callback;
+    /**
+     * 订阅的 topic
+     *
+     * @var string
+     */
+    protected $topic;
+    /**
+     * 订阅的 channel
+     *
+     * @var string
+     */
+    protected $channel;
+    /**
+     * 处理消息的回调函数
+     *
+     * @var string
+     */
+    protected $callback;
 
-    public function __construct($host = "localhost",$port = 4151,$callback) {
+    public function __construct($host = "localhost",$port = 4151) {
         $this->host = $host;
         $this->port = $port;
+    }
 
+
+    /**
+     * 设置主题参数
+     *
+     * @param string $topic
+     * @param string $channel
+     * @param        $callback
+     */
+    public function setParams(string $topic,string $channel,$callback) {
+        $this->topic    = $topic;
+        $this->channel  = $channel;
         $this->callback = $callback;
     }
 
