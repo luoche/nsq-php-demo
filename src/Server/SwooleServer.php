@@ -2,6 +2,7 @@
 namespace nsqphp\Server;
 use nsqphp\Exception\NetworkSocketException;
 use nsqphp\Exception\NsqException;
+use nsqphp\Logger\Logger;
 use nsqphp\Util\NsqMessage;
 use nsqphp\Util\ResponseMessage;
 use nsqphp\Util\ResponseNsq;
@@ -139,8 +140,20 @@ class SwooleServer extends AbstractProxyServer {
                 throw new NsqException("Subscribe callback is not callable");
             }
 
-            // 定义好的回调参数
-            call_user_func($this->callback,$this->socket,$receiveMsg);
+            try {
+                // 定义好的回调参数
+                call_user_func($this->callback,$this->socket,$receiveMsg);
+            }catch (\Exception $e){
+                // 消息处理失败
+
+                // 告知重新放入队列
+                $this->socket->send(NsqMessage::req($receiveMsg->getId(),3));
+
+                $this->socket->send(NsqMessage::rdy(1));
+                Logger::ins()->alert("Deal Message failed ");
+                throw new NsqException("Deal Message failed ");
+            }
+
 
             $this->socket->send(NsqMessage::fin($receiveMsg->getId()));
 
