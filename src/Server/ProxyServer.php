@@ -13,5 +13,4 @@ interface ProxyServer {
 
     public function write(string $buffer);
 
-    public function reconnect();
 }

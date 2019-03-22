@@ -3,7 +3,7 @@ namespace nsqphp\Util;
 use nsqphp\Exception\NsqException;
 
 /**
- *  返回消息的 message 体
+ *  把订阅消息 读取的消息 封装为一个 消息体(ResponseMessage)类
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08
@@ -38,10 +38,10 @@ class ResponseMessage {
             throw new NsqException('Error message frame');
         }
 
-        $this->payload = $frame['payload'];
-        $this->id = $frame['id'];
+        $this->payload  = $frame['payload'];
+        $this->id       = $frame['id'];
         $this->attempts = $frame['attempts'];
-        $this->ts = $frame['ts'];
+        $this->ts       = $frame['ts'];
     }
 
     public function getId() {

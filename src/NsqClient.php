@@ -38,6 +38,11 @@ class NsqClient {
      */
     private $nsqdConf;
 
+    /**
+     * 建立连接
+     *
+     * @param array $nsqConf
+     */
     public function publishTo(array $nsqConf) {
         // 本质就是实例化不同的Client
         // 先写简单的 一次只是发送到一个nsqd 节点上

@@ -40,16 +40,11 @@ class SwooleServer extends AbstractProxyServer {
     ];
 
     /**
-     * 连接超时时间--可以传惨 todo
+     * 连接超时时间--可以传参
      *
      * @var int
      */
     private $timeout = 3;
-
-
-    public function reconnect() {
-
-    }
 
     /**
      * 建立连接

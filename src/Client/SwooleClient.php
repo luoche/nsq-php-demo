@@ -73,12 +73,6 @@ class SwooleClient extends AbstractProxyClient {
         return $msg;
     }
 
-
-
-    public function reconnect() {
-
-    }
-
     /**
      * 建立连接
      *
@@ -93,6 +87,7 @@ class SwooleClient extends AbstractProxyClient {
 
             $reopen = true;
         }
+
         if ($reopen) {
             $this->socket->connect($this->host,$this->port,$this->timeout);
 

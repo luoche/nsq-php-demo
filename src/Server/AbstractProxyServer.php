@@ -39,7 +39,7 @@ abstract class AbstractProxyServer implements ProxyServer  {
 
 
     /**
-     * 设置主题参数
+     * 设置 topic 等参数
      *
      * @param string $topic
      * @param string $channel
@@ -56,10 +56,6 @@ abstract class AbstractProxyServer implements ProxyServer  {
     }
 
     public function write(string $buffer) {
-
-    }
-
-    public function reconnect() {
 
     }
 

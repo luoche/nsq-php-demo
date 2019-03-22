@@ -3,10 +3,10 @@
 namespace nsqphp\Util;
 
 /**
- * Class HTTP
+ * Class HTTP- 模拟 HTTP 的get请求 和 post 请求
  *
  * @version  : 1.0.0
- * @datetime : ${date} ${HOUR}
+ * @datetime : 2019-03-21
  * @package  nsqphp\Util
  */
 class HTTP {

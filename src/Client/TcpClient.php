@@ -19,6 +19,8 @@ class TcpClient  extends AbstractProxyClient   {
     public $port = 4150;
 
     /**
+     * 连接
+     *
      * @var
      */
     private $socket;
@@ -27,6 +29,7 @@ class TcpClient  extends AbstractProxyClient   {
      * 使用TCP 读取消息
      *  本质 : 使用 stream_select  建立读连接
      *             stream_socket_recvfrom 读取数据
+     *
      * @param int $length 待读取的长度
      * @return string
      */
@@ -100,13 +103,8 @@ class TcpClient  extends AbstractProxyClient   {
         }
     }
 
-    public function reconnect() {
-
-    }
-
     /**
      * 获取连接
-     *
      */
     private function getSocket(){
         // 实现方式不一

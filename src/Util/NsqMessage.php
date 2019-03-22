@@ -2,8 +2,8 @@
 namespace nsqphp\Util;
 
 /**
- * Class 类名
- *  结合 nsq 的消息体,通过text 生产对应的消息体
+ * NsqMessage
+ *  发送NSQ 二进制消息体 针对消息的打包处理
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08

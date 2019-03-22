@@ -94,7 +94,7 @@ class ResponseNsq {
                 //                        2-byte
                 //                    attempts
 
-                // 建立一个消息类更好 todo
+                // 建立一个消息类更好 ResponseMessage
                 $frame["timestamp"] = $readTcp->readLong();
                 $frame["attempts"]  = $readTcp->readShort();
                 $frame["id"]        = $readTcp->readString(16);

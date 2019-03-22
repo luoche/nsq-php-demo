@@ -44,7 +44,4 @@ class HttpClient extends AbstractProxyClient  {
         return HTTP::post($url, $buffer);
     }
 
-    public function reconnect() {
-
-    }
 }

@@ -4,7 +4,7 @@ use nsqphp\Exception\NetworkSocketException;
 use nsqphp\Util\NsqMessage;
 
 /**
- * swoole 实现模拟请求
+ * TCP 实现模拟请求
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:31 08
@@ -37,7 +37,7 @@ class TcpServer extends AbstractProxyServer {
     ];
 
     /**
-     * 连接超时时间--可以传惨 todo
+     * 连接超时时间--可以传参
      *
      * @var int
      */

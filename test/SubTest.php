@@ -19,6 +19,6 @@ $channel = "test";
 
 $nsqClient->subscribe($lookupConf,$topic,$channel,$this->tempCallback());
 
-function tempCallback($conn,Message $msg){
-
+function tempCallback($conn,\nsqphp\Util\ResponseMessage $msg){
+    echo $msg->getId().":".$msg->getPayload();
 }
