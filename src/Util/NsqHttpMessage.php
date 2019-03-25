@@ -10,9 +10,13 @@ namespace nsqphp\Util;
  */
 class NsqHttpMessage {
 
-    const PUB = "PUB";
+    const PUB = "pub";
+
+    const MPUB = "mpub";
+
     /**
      * 发送消息体
+     *  curl -d "<message>" http://127.0.0.1:4151/pub?topic=message_topic`
      *
      * @param string $message
      * @return string
@@ -23,6 +27,29 @@ class NsqHttpMessage {
     }
 
     /**
+     * 发送多条消息体
+     *  curl -d "<message>\n<message>\n<message>" http://127.0.0.1:4151/mpub?topic=message_topic`
+     *  或者 ?binary=true 查询参数来允许二进制模式
+     *   [ 4-byte num messages ]
+     *   [ 4-byte message #1 size ][ N-byte binary data ]
+     *   ... (repeated <num_messages> times)
+     *
+     * @param array $messageArr
+     * @return string
+     */
+    public static function mpub(array $messageArr):string {
+        // pub 的消息体 todo
+        $msgs = "";
+        foreach ($messageArr as $index => $message) {
+            $msgData = self::packet($message); //[ N-byte binary data ]
+            $msgSize = pack("N",strlen($msgData)); // [ 4-byte message #1 size ]
+            $msgs   .= $msgSize.$msgData; //  [ 4-byte message #1 size ][ N-byte binary data ]
+        }
+        $msgsCount = pack("N",count($messageArr)); //[ 4-byte num messages ]
+        return $msgsCount.$msgs;
+    }
+
+    /**
      * 获取发布地址的URL
      *
      * @param string $topic
@@ -30,6 +57,16 @@ class NsqHttpMessage {
      */
     public static function pubUrl(string $topic):string {
         return sprintf('pub?topic=%s', $topic);
+    }
+
+    /**
+     * 获取发送多条消息发布地址的URL
+     *
+     * @param string $topic
+     * @return string
+     */
+    public static function mpubUrl(string $topic):string {
+        return sprintf('mpub?topic=%s&binary=true', $topic);
     }
 
     /**

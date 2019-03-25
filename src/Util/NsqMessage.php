@@ -43,6 +43,34 @@ class NsqMessage {
     }
 
     /**
+     * 发送多条消息体
+     *
+     *  MPUB <topic_name>\n
+     *  [ 4-byte body size ]
+     *  [ 4-byte num messages ]
+     *  [ 4-byte message #1 size ][ N-byte binary data ]
+     *  ... (repeated <num_messages> times)
+     *
+     *  <topic_name> - 字符串 (建议 having #ephemeral suffix)
+     *
+     *
+     * @param string $topic
+     * @param array $messageArr
+     * @return string
+     */
+    public static function mpub(string $topic,array $messageArr):string {
+        // mpub 的消息体
+        $msgs = "";
+        foreach ($messageArr as $index => $message) {
+            $msgs .= pack("N",strlen($message)).$message; // [ 4-byte message #1 size ][ N-byte binary data ]
+        }
+        $msgSize  = pack("N",strlen($msgs));    // [ 4-byte body size ]
+        $msgCount = pack("N",count($messageArr)); // [ 4-byte num messages ]
+
+        return sprintf("%s %s\n%s%s%s",self::MPUB,$topic,$msgSize,$msgCount,$msgs);
+    }
+
+    /**
      * SUB
      * 订阅话题（topic) /通道（channel)
      *

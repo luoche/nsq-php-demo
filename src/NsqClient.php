@@ -67,9 +67,9 @@ class NsqClient {
      * 发布消息
      *
      * @param String $topic
-     * @param String $message
+     * @param String|array $message 一条或者多条记录
      */
-    public function publish(String $topic,String $message) {
+    public function publish(String $topic, $message) {
         // 如果是Http请求
         if ($this->proxyClient instanceof HttpClient) {
             $this->publishViaHttp($topic, $message);
@@ -82,14 +82,19 @@ class NsqClient {
      * 通过 Http 的方式发布信息
      *
      * @param String $topic
-     * @param String $message
+     * @param String|array $message
      * @throws NetworkSocketException
      * @return bool
      */
-    private function publishViaHttp(String $topic,String $message){
+    private function publishViaHttp(String $topic, $message){
         // 拼装消息体
-        $formatMessage = NsqHttpMessage::pub($message);
-        $url           = NsqHttpMessage::pubUrl($topic);
+        if (is_array($message)) {
+            $formatMessage = NsqHttpMessage::mpub($message);
+            $url           = NsqHttpMessage::mpubUrl($topic);
+        } else {
+            $formatMessage = NsqHttpMessage::pub($message);
+            $url           = NsqHttpMessage::pubUrl($topic);
+        }
         $proxyClient   = new HttpClient($this->nsqdConf['host'],$this->nsqdConf['port']);
         $proxyClient->setUrl($url);
 
@@ -113,14 +118,18 @@ class NsqClient {
      * 通过 TCP 的方式发布信息
      *
      * @param String $topic
-     * @param String $message
+     * @param String|array $message
      * @throws NetworkSocketException
      * @return bool
      */
-    private function publishViaTcp(String $topic,String $message){
+    private function publishViaTcp(String $topic, $message){
         // 封装 message 后续可以封装成为一个方法,因为消息的多样性
         try {
-            $formatMessage = NsqMessage::pub($topic,$message);
+            if (is_array($message)) {
+                $formatMessage = NsqMessage::mpub($topic,$message);
+            } else {
+                $formatMessage = NsqMessage::pub($topic,$message);
+            }
             // 发送消息
             $this->proxyClient->write($formatMessage);
 

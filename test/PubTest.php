@@ -19,3 +19,13 @@ $topic = "test";
 $message = "Hello Nsq";
 
 $nsqClient->publish($topic,$message);
+
+
+// 发送多条消息
+$topic = "test";
+$message = [
+    "message 1",
+    "message 2",
+];
+
+$nsqClient->publish($topic,$message);
