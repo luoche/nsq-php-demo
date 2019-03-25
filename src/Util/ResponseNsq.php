@@ -109,6 +109,68 @@ class ResponseNsq {
     }
 
     /**
+     * 从已经读取消息中 格式化信息
+     *
+     * @param string $buffer
+     * @return array
+     */
+    public static function readFormatFromBuffer(string $buffer):array {
+        // 可能返回不同的格式, message 或者
+        //$size = $frameType = null;
+        $readTcpMessage   = new ReadTcpMessage($buffer);
+        try {
+            $size      = $readTcpMessage->readInt();
+            $frameType = $readTcpMessage->readInt();
+        } catch (SocketException $e) {
+            throw new SocketException("Error reading message from ".$e->getMessage(),null,$e);
+        }
+
+        $frame = [
+            'size' => $size,
+            'type' => $frameType,
+        ];
+
+        //FrameTypeResponse int32 = 0
+        //FrameTypeError    int32 = 1
+        //FrameTypeMessage  int32 = 2
+        // 减去类型长度
+        $msgSize = $size-4;
+        // 分析返回值
+        switch ($frameType) {
+            case self::FRAME_TYPE_RESPONSE:
+                $response = $readTcpMessage->readString($msgSize);
+                $frame['response'] = $response;
+                break;
+            case self::FRAME_TYPE_ERROR:
+                $error = $readTcpMessage->readString($msgSize);
+                $frame['error'] = $error;
+                break;
+            case self::FRAME_TYPE_MESSAGE:
+
+                //[x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x][x]...
+                //|       (int64)        ||    ||      (hex string encoded in ASCII)           || (binary)
+                //|       8-byte         ||    ||                 16-byte                      || N-byte
+                // ------------------------------------------------------------------------------------------...
+                //nanosecond timestamp    ^^                   message ID                       message body
+                //                     (uint16)
+                //                        2-byte
+                //                    attempts
+
+                // 建立一个消息类更好 ResponseMessage
+                $frame["timestamp"] = $readTcpMessage->readLong();
+                $frame["attempts"]  = $readTcpMessage->readShort();
+                $frame["id"]        = $readTcpMessage->readString(16);
+                $frame["message"]   = $readTcpMessage->readString($msgSize - 26);
+                break;
+            default:
+                throw new SocketException("Tcp return unknown frame type: message is ".$readTcpMessage->readString($msgSize));
+                break;
+        }
+
+        return $frame;
+    }
+
+    /**
      * 返回的消息是否是心跳包
      *
      * @param array $reqFrame

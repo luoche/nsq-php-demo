@@ -129,10 +129,14 @@ class SwooleServer extends AbstractProxyServer {
         // 3. 发送fin
         // 4. 告知ready
 
-        $responseMessageFormat = ResponseNsq::readFormat($this->socket);
+        // 传参正确吗 ??? server $this->socket
+        // swoole 是 onMessage 读取的buffer
+        //$responseMessageFormat = ResponseNsq::readFormat($this->socket);
+        $responseMessageFormat = ResponseNsq::readFormatFromBuffer($data);
         // 区分不同 读取消息是一直读
         if (ResponseNsq::isHeartBeat($responseMessageFormat)) {
             // 如果是心跳 就继续
+            // 可以把这个封装成一个方法 read
             $this->socket->send(NsqMessage::nop());
         } else if(ResponseNsq::isMessage($responseMessageFormat)){
             $receiveMsg = new ResponseMessage($responseMessageFormat);

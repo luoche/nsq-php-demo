@@ -9,6 +9,7 @@ use nsqphp\Exception\NetworkSocketException;
 use nsqphp\Exception\NsqException;
 use nsqphp\Logger\Logger;
 use nsqphp\Server\SwooleServer;
+use nsqphp\Server\TcpServer;
 use nsqphp\Util\Lookup;
 use nsqphp\Util\NsqHttpMessage;
 use nsqphp\Util\NsqMessage;
@@ -184,8 +185,7 @@ class NsqClient {
         Logger::ins()->info("Found the host connect to you nsqd topic".$topic);
         // 遍历所有节点
         foreach ($nsqdArr as $ko => $nsqdConf) {
-            // 建立连接 使用 Stream 或者 swoole
-            // todo Tcp
+            /*// 建立连接 使用 Stream 或者 swoole
             $conn = new SwooleServer($nsqdConf['host'],$nsqdArr['port']);
 
             $conn->setParams($topic, $channel, $callback);
@@ -193,10 +193,27 @@ class NsqClient {
             Logger::ins()->info("Connent to you nsqd".$conn->getDomain());
 
             // 所有的信息 放到 此步完成
-            $conn->getSocket();
+            $conn->getSocket();*/
+
+            // 使用 TCP的方式
+            $conn = new TcpServer($nsqdConf['host'],$nsqdArr['port']);
+            // 设置 topic 参数
+            $conn->setParams($topic, $channel, $callback);
+            Logger::ins()->info("Connent to you nsqd".$conn->getDomain());
+
+            $conn->dispatchFrame();
         }
 
         return $this;
+    }
+
+    /**
+     * TCP 应该只处理TCP的问题,不关心数据 和协议 业务
+     *
+     * @param $messageId
+     */
+    public function finish($messageId) {
+
     }
 
     /**

@@ -1,24 +1,23 @@
 <?php
 namespace nsqphp\Util;
-use nsqphp\Client\AbstractProxyClient;
 
 /**
- * 解析TCP二进制包---可以合并到上一个
+ * 解析TCP二进制包 (数据包已经接收)
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08
  */
-class ReadTcp {
+class ReadTcpMessage {
 
     /**
-     * 建立的连接
+     * 消息体
      *
-     * @var AbstractProxyClient
+     * @var string $message
      */
-    private $conn;
+    private $message;
 
-    public function __construct(AbstractProxyClient $conn) {
-        $this->conn = $conn;
+    public function __construct(string $message) {
+        $this->message = $message;
     }
 
     /**
@@ -28,7 +27,7 @@ class ReadTcp {
      */
     public function readShort():int {
         // short 类型 使用 n
-        list(,$res) = unpack('n', $this->conn->read(2));
+        list(,$res) = unpack('n', $this->readChar(2));
         return $res;
     }
 
@@ -39,7 +38,7 @@ class ReadTcp {
      */
     public function readInt():int  {
         // int 类型 使用 N
-        list(,$res) = unpack('N', $this->conn->read(4));
+        list(,$res) = unpack('N', $this->readChar(4));
         if ((PHP_INT_SIZE !== 4)) {
             $res = sprintf("%u", $res);
         }
@@ -52,8 +51,8 @@ class ReadTcp {
      * @return int
      */
     public function readLong():int {
-        $high  = unpack('N', $this->conn->read(4));
-        $lower = unpack('N', $this->conn->read(4));
+        $high  = unpack('N', $this->readChar(4));
+        $lower = unpack('N', $this->readChar(4));
 
         // workaround signed/unsigned braindamage in php
         $high  = sprintf("%u", $high[1]);
@@ -70,7 +69,7 @@ class ReadTcp {
      */
     public function readString($size = 4):string {
         // string 类型 使用 c
-        $temp = unpack("c{$size}chars", $this->conn->read($size));
+        $temp = unpack("c{$size}chars", $this->readChar($size));
         $out = "";
         foreach($temp as $v) {
             if ($v > 0) {
@@ -78,5 +77,19 @@ class ReadTcp {
             }
         }
         return $out;
+    }
+
+    /**
+     * 读取固定长度的字符串,并且截取之前的字符串
+     *
+     * @param int $length
+     * @return string
+     */
+    public function readChar(int $length) {
+        $charMessage = substr($this->message,0,$length);
+
+        // 更新message的值
+        $this->message = substr($this->message,$length);
+        return $charMessage;
     }
 }
