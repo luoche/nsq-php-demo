@@ -3,7 +3,7 @@ namespace nsqphp\Util;
 use nsqphp\Client\AbstractProxyClient;
 
 /**
- * 解析TCP二进制包---可以合并到上一个
+ * 解析TCP二进制包---可以合并到上一个--tcpReader
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08

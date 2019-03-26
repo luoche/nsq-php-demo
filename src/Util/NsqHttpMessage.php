@@ -38,7 +38,7 @@ class NsqHttpMessage {
      * @return string
      */
     public static function mpub(array $messageArr):string {
-        // pub 的消息体 todo
+        // pub 的消息体
         $msgs = "";
         foreach ($messageArr as $index => $message) {
             $msgData = self::packet($message); //[ N-byte binary data ]

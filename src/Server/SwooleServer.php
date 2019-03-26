@@ -1,11 +1,7 @@
 <?php
 namespace nsqphp\Server;
 use nsqphp\Exception\NetworkSocketException;
-use nsqphp\Exception\NsqException;
-use nsqphp\Logger\Logger;
 use nsqphp\Util\NsqMessage;
-use nsqphp\Util\ResponseMessage;
-use nsqphp\Util\ResponseNsq;
 
 /**
  * swoole 实现模拟请求
@@ -21,12 +17,10 @@ class SwooleServer extends AbstractProxyServer {
      * @var int
      */
     public $port = 4150;
-
     /**
      * @var
      */
     protected $socket;
-
     /**
      * swoole 的默认配置
      *
@@ -39,7 +33,6 @@ class SwooleServer extends AbstractProxyServer {
         'package_length_offset' => 0,
         'package_body_offset'   => 4
     ];
-
     /**
      * 连接超时时间--可以传参
      *
@@ -107,12 +100,24 @@ class SwooleServer extends AbstractProxyServer {
         // 1. 发送版本信息
         // 2. 发起订阅
         // 3. 告知 ready
-        $this->socket->send(NsqMessage::magic());
+        $this->write(NsqMessage::magic());
 
-        $this->socket->send(NsqMessage::sub($this->topic, $this->channel));
+        $this->write(NsqMessage::sub($this->topic, $this->channel));
 
-        $this->socket->send(NsqMessage::rdy(1));
+        $this->write(NsqMessage::rdy(1));
 
+    }
+
+    /**
+     * 使用 swoole 写入 TCP 消息
+     *
+     * @param string $buffer
+     */
+    public function write(string $buffer) {
+        $write = $this->socket->send($buffer);
+        if ($write === false) {
+            throw new NetworkSocketException("Failed to write message to ".$this->getDomain());
+        }
     }
 
     /**
@@ -131,45 +136,11 @@ class SwooleServer extends AbstractProxyServer {
 
         // 传参正确吗 ??? server $this->socket
         // swoole 是 onMessage 读取的buffer
-        //$responseMessageFormat = ResponseNsq::readFormat($this->socket);
-        $responseMessageFormat = ResponseNsq::readFormatFromBuffer($data);
-        // 区分不同 读取消息是一直读
-        if (ResponseNsq::isHeartBeat($responseMessageFormat)) {
-            // 如果是心跳 就继续
-            // 可以把这个封装成一个方法 read
-            $this->socket->send(NsqMessage::nop());
-        } else if(ResponseNsq::isMessage($responseMessageFormat)){
-            $receiveMsg = new ResponseMessage($responseMessageFormat);
-            if (!is_callable($this->callback)) {
-                throw new NsqException("Subscribe callback is not callable");
-            }
+        // 命令不规范
 
-            try {
-                // 定义好的回调参数
-                call_user_func($this->callback,$this->socket,$receiveMsg);
-            }catch (\Exception $e){
-                // 消息处理失败
-
-                // 告知重新放入队列
-                $this->socket->send(NsqMessage::req($receiveMsg->getId(),3));
-
-                $this->socket->send(NsqMessage::rdy(1));
-                Logger::ins()->alert("Deal Message failed ");
-                throw new NsqException("Deal Message failed ");
-            }
-
-
-            $this->socket->send(NsqMessage::fin($receiveMsg->getId()));
-
-            $this->socket->send(NsqMessage::rdy(1));
-
-        } else if (ResponseNsq::isOk($responseMessageFormat)){
-            // 不做处理
-        } else {
-            throw new NetworkSocketException("Error frame type from received.");
-        }
-
+        $this->readMessage($data);
     }
+
 
     /**
      * 处理错误信息
@@ -183,7 +154,7 @@ class SwooleServer extends AbstractProxyServer {
      */
     private function onClose(){
         //$this->getSocket(true);
-
+        // 每个进程结束的时候 ,自动关闭 socket 连接
         $this->socket->connect($this->host,$this->port,$this->timeout);
     }
 

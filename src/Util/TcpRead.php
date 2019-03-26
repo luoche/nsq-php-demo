@@ -3,11 +3,12 @@ namespace nsqphp\Util;
 
 /**
  * 解析TCP二进制包 (数据包已经接收)
+ *  mark 命名应该规范
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08
  */
-class ReadTcpMessage {
+class TcpRead {
 
     /**
      * 消息体

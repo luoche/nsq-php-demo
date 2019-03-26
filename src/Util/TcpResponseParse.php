@@ -9,7 +9,7 @@ use nsqphp\Exception\SocketException;
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08
  */
-class ResponseNsq {
+class TcpResponseParse {
 
     //FrameTypeResponse int32 = 0
     //FrameTypeError    int32 = 1
@@ -55,6 +55,7 @@ class ResponseNsq {
     public static function readFormat(AbstractProxyClient $conn):array {
         // 可能返回不同的格式, message 或者
         //$size = $frameType = null;
+        // 静态方法 所有的进程公用
         $readTcp   = new ReadTcp($conn);
         try {
             $size      = $readTcp->readInt();
@@ -117,10 +118,10 @@ class ResponseNsq {
     public static function readFormatFromBuffer(string $buffer):array {
         // 可能返回不同的格式, message 或者
         //$size = $frameType = null;
-        $readTcpMessage   = new ReadTcpMessage($buffer);
+        $tcpRead   = new TcpRead($buffer);
         try {
-            $size      = $readTcpMessage->readInt();
-            $frameType = $readTcpMessage->readInt();
+            $size      = $tcpRead->readInt();
+            $frameType = $tcpRead->readInt();
         } catch (SocketException $e) {
             throw new SocketException("Error reading message from ".$e->getMessage(),null,$e);
         }
@@ -138,11 +139,11 @@ class ResponseNsq {
         // 分析返回值
         switch ($frameType) {
             case self::FRAME_TYPE_RESPONSE:
-                $response = $readTcpMessage->readString($msgSize);
+                $response = $tcpRead->readString($msgSize);
                 $frame['response'] = $response;
                 break;
             case self::FRAME_TYPE_ERROR:
-                $error = $readTcpMessage->readString($msgSize);
+                $error = $tcpRead->readString($msgSize);
                 $frame['error'] = $error;
                 break;
             case self::FRAME_TYPE_MESSAGE:
@@ -157,13 +158,13 @@ class ResponseNsq {
                 //                    attempts
 
                 // 建立一个消息类更好 ResponseMessage
-                $frame["timestamp"] = $readTcpMessage->readLong();
-                $frame["attempts"]  = $readTcpMessage->readShort();
-                $frame["id"]        = $readTcpMessage->readString(16);
-                $frame["message"]   = $readTcpMessage->readString($msgSize - 26);
+                $frame["timestamp"] = $tcpRead->readLong();
+                $frame["attempts"]  = $tcpRead->readShort();
+                $frame["id"]        = $tcpRead->readString(16);
+                $frame["message"]   = $tcpRead->readString($msgSize - 26);
                 break;
             default:
-                throw new SocketException("Tcp return unknown frame type: message is ".$readTcpMessage->readString($msgSize));
+                throw new SocketException("Tcp return unknown frame type: message is ".$tcpRead->readString($msgSize));
                 break;
         }
 

@@ -30,6 +30,7 @@ class NsqMessage {
      *
      *  PUB <topic_name>\n
      *  [ 4-byte size in bytes ][ N-byte binary data ]
+     *
      *  <topic_name> - a valid string (optionally having #ephemeral suffix)
      *
      *

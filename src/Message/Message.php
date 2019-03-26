@@ -1,14 +1,14 @@
 <?php
-namespace nsqphp\Util;
+namespace nsqphp\Message;
 use nsqphp\Exception\NsqException;
 
 /**
- *  把订阅消息 读取的消息 封装为一个 消息体(ResponseMessage)类
+ *  把订阅消息 读取的消息 封装为一个 消息体(Message)类
  *
  * @version  : 1.0.0
  * @datetime : 2019/3/20 08:14 08
  */
-class ResponseMessage {
+class Message {
 
     /**
      * @var int

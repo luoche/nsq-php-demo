@@ -13,7 +13,7 @@ use nsqphp\Server\TcpServer;
 use nsqphp\Util\Lookup;
 use nsqphp\Util\NsqHttpMessage;
 use nsqphp\Util\NsqMessage;
-use nsqphp\Util\ResponseNsq;
+use nsqphp\Util\TcpResponseParse;
 
 /**
  * 本demo 的入口,主要实现
@@ -40,14 +40,51 @@ class NsqClient {
     private $nsqdConf;
 
     /**
+     * 订阅的连接池
+     *
+     * @var array
+     */
+    private $subPool = [];
+
+    /**
+     * 生产者 tcp 的连接池
+     *
+     * @var array
+     */
+    private $producerTcpPool = [];
+
+    /**
+     * 生产者 HTTP 的连接池
+     *
+     * @var array
+     */
+    private $producerHttpPool = [];
+
+
+    private function initProducerPool(array $nsqConfArr){
+        if (empty($nsqConfArr)) {
+            Logger::ins()->error("Empty nsqd");
+            throw new NsqException("Fail to get nsqd");
+        }
+
+        foreach ($nsqConfArr as $index => $nsqConf) {
+
+        }
+    }
+
+    /**
      * 建立连接
      *
      * @param array $nsqConf
      */
     public function publishTo(array $nsqConf) {
+
+        $this->initProducerPool($nsqConf);
         // 本质就是实例化不同的Client
         // 先写简单的 一次只是发送到一个nsqd 节点上
         $nsqdConf = $this->_getNsqd($nsqConf);
+
+
         if (empty($nsqConf)) {
             throw new NsqException("Failed to get Nsqd node");
         }
@@ -72,6 +109,7 @@ class NsqClient {
      */
     public function publish(String $topic, $message) {
         // 如果是Http请求
+        // 下一次个消息来的时候,统一需要实例化。 增加了实例化的次数 增加了内存的消耗
         if ($this->proxyClient instanceof HttpClient) {
             $this->publishViaHttp($topic, $message);
         } else {
@@ -96,10 +134,10 @@ class NsqClient {
             $formatMessage = NsqHttpMessage::pub($message);
             $url           = NsqHttpMessage::pubUrl($topic);
         }
-        $proxyClient   = new HttpClient($this->nsqdConf['host'],$this->nsqdConf['port']);
-        $proxyClient->setUrl($url);
+        $this->proxyClient->setUrl($url);
 
         list($error,$res) = $this->proxyClient->write($formatMessage);
+
         if ($error) { // 发送错误
             list($errNo,$errMsg) = $error;
             Logger::ins()->error("HTTP Publish is failed",[
@@ -126,7 +164,9 @@ class NsqClient {
     private function publishViaTcp(String $topic, $message){
         // 封装 message 后续可以封装成为一个方法,因为消息的多样性
         try {
+            // todo 命令规范
             if (is_array($message)) {
+                // pub 是一个动词 不能用来封装字符串 做些非动作 mark
                 $formatMessage = NsqMessage::mpub($topic,$message);
             } else {
                 $formatMessage = NsqMessage::pub($topic,$message);
@@ -135,22 +175,23 @@ class NsqClient {
             $this->proxyClient->write($formatMessage);
 
             // 处理响应
-            $nsqResFormatArr = ResponseNsq::readFormat($this->proxyClient);
+            $nsqResFormatArr = TcpResponseParse::readFormat($this->proxyClient);
 
             // 排除心跳
-            $isHeartBeat = ResponseNsq::isHeartBeat($nsqResFormatArr);
+            $isHeartBeat = TcpResponseParse::isHeartBeat($nsqResFormatArr);
             while($isHeartBeat){
                 $this->proxyClient->write(NsqMessage::nop());
 
-                $nsqResFormatArr = ResponseNsq::readFormat($this->proxyClient);
+                $nsqResFormatArr = TcpResponseParse::readFormat($this->proxyClient);
             }
 
-            $isPubSuccess = ResponseNsq::isOk($nsqResFormatArr);
+            $isPubSuccess = TcpResponseParse::isOk($nsqResFormatArr);
             if (!$isPubSuccess) {
                 Logger::ins()->error("failed to send message",[
                     'domain'  => $this->proxyClient->getDomain(),
                     'message' => $message
                 ]);
+                return false;
             }
 
         } catch (\Exception $e) {
@@ -183,9 +224,12 @@ class NsqClient {
             throw new NsqException("There is no available nsqd for this topic ".$topic);
         }
         Logger::ins()->info("Found the host connect to you nsqd topic".$topic);
+
         // 遍历所有节点
         foreach ($nsqdArr as $ko => $nsqdConf) {
-            /*// 建立连接 使用 Stream 或者 swoole
+            // conn 是服务启动在单个节点上,所以需要 连接池
+            // 所谓的长连接 就是用完不关闭。 时间很长
+            // 建立连接 使用 Stream 或者 swoole
             $conn = new SwooleServer($nsqdConf['host'],$nsqdArr['port']);
 
             $conn->setParams($topic, $channel, $callback);
@@ -193,15 +237,19 @@ class NsqClient {
             Logger::ins()->info("Connent to you nsqd".$conn->getDomain());
 
             // 所有的信息 放到 此步完成
-            $conn->getSocket();*/
+            $conn->getSocket();
+
+
 
             // 使用 TCP的方式
             $conn = new TcpServer($nsqdConf['host'],$nsqdArr['port']);
             // 设置 topic 参数
             $conn->setParams($topic, $channel, $callback);
+            $conn->getSocket();
             Logger::ins()->info("Connent to you nsqd".$conn->getDomain());
-
             $conn->dispatchFrame();
+
+            $this->subPool[] = $conn;
         }
 
         return $this;
@@ -225,10 +273,7 @@ class NsqClient {
     private function _getNsqd(array $nsqConf):array {
         // 根据配置,随机获取一个Nsqd 节点
         // 先实现发布到一个Nsqd 节点,后续再来实现 2个,多个 todo
-        if (empty($nsqConf)) {
-            Logger::ins()->error("Empty nsqd");
-            throw new NsqException("Fail to get nsqd");
-        }
+
         $tempNsqd = shuffle($nsqConf);
 
         return $tempNsqd[0];
