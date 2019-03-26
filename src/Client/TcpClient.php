@@ -105,10 +105,16 @@ class TcpClient  extends AbstractProxyClient   {
 
     /**
      * 获取连接
+     *
+     * @param bool $reopen
      */
-    private function getSocket(){
+    private function getSocket($reopen = false){
         // 实现方式不一
         if (!$this->socket) {
+            $reopen = true;
+        }
+
+        if ($reopen) {
             $timeout = 30;
             $this->socket = fsockopen($this->host,$this->port,$errNo,$errMsg,$timeout);
             if (!$this->socket) {
@@ -116,5 +122,12 @@ class TcpClient  extends AbstractProxyClient   {
             }
             stream_set_blocking($this->socket, 1);
         }
+    }
+
+    /**
+     * 重新连接
+     */
+    public function reconnect() {
+        $this->getSocket(true);
     }
 }

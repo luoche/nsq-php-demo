@@ -13,7 +13,8 @@ $nsqConf = [
 ];
 
 $nsqClient = new \nsqphp\NsqClient();
-$nsqClient->publishTo($nsqConf);
+$pubClientNum = 1;
+$nsqClient->publishTo($nsqConf,$pubClientNum);
 
 $topic = "test";
 $message = "Hello Nsq";

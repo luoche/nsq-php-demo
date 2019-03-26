@@ -4,9 +4,11 @@ namespace nsqphp;
 
 use nsqphp\Client\AbstractProxyClient;
 use nsqphp\Client\HttpClient;
+use nsqphp\Client\SwooleClient;
 use nsqphp\Client\TcpClient;
 use nsqphp\Exception\NetworkSocketException;
 use nsqphp\Exception\NsqException;
+use nsqphp\Exception\PublishException;
 use nsqphp\Logger\Logger;
 use nsqphp\Server\SwooleServer;
 use nsqphp\Server\TcpServer;
@@ -26,18 +28,17 @@ use nsqphp\Util\TcpResponseParse;
 class NsqClient {
 
     /**
-     * 模拟发送数据的客户端
-     *
-     * @var AbstractProxyClient
+     * 发布到一个 nsqd 节点
      */
-    private $proxyClient;
-
+    const PUB_ONE = 1;
     /**
-     * 对应 nsqd 节点的配置信息
-     *
-     * @var array
+     * 发布到二个 nsqd 节点
      */
-    private $nsqdConf;
+    const PUB_TWO = 2;
+    /**
+     * 发布到一半 nsqd 节点
+     */
+    const PUB_QUORUM = 5;
 
     /**
      * 订阅的连接池
@@ -59,16 +60,41 @@ class NsqClient {
      * @var array
      */
     private $producerHttpPool = [];
+    /**
+     * 当前的使用连接方式
+     *
+     * @var string
+     */
+    private $producerType = "tcp";
+    /**
+     *  发送成功的nsqd节点数量
+     *
+     * @var int
+     */
+    private $pubSuccessCount;
 
-
+    /**
+     * 根据配置参数,初始化连接池
+     *
+     * @param array $nsqConfArr
+     */
     private function initProducerPool(array $nsqConfArr){
         if (empty($nsqConfArr)) {
             Logger::ins()->error("Empty nsqd");
             throw new NsqException("Fail to get nsqd");
         }
 
-        foreach ($nsqConfArr as $index => $nsqConf) {
-
+        // 为了逻辑清晰,TCP 和 HTTP 应该用不同的架构
+        foreach ($nsqConfArr as $index => $nsqdConf) {
+            if ($nsqdConf['port'] == 4151) { // HTTP 请求
+                // step1 : 先使用Http 模拟所有的请求
+                $this->producerHttpPool[] = new HttpClient($nsqdConf['host'],$nsqdConf['port']);
+                $this->producerType = "http";
+            } else {
+                // 使用 TCP 或者 swoole
+                $this->producerTcpPool[] = new TcpClient($nsqdConf['host'],$nsqdConf['port']);
+                $this->producerType = "tcp";
+            }
         }
     }
 
@@ -76,14 +102,16 @@ class NsqClient {
      * 建立连接
      *
      * @param array $nsqConf
+     * @param int  $pubClientType 发布到nsqd 节点数量的类型
+     * @return $this
      */
-    public function publishTo(array $nsqConf) {
+    public function publishTo(array $nsqConf,int $pubClientType = 1) {
 
         $this->initProducerPool($nsqConf);
-        // 本质就是实例化不同的Client
+
+        /*// 本质就是实例化不同的Client
         // 先写简单的 一次只是发送到一个nsqd 节点上
         $nsqdConf = $this->_getNsqd($nsqConf);
-
 
         if (empty($nsqConf)) {
             throw new NsqException("Failed to get Nsqd node");
@@ -98,7 +126,31 @@ class NsqClient {
             $proxyClient = new TcpClient($nsqdConf['host'],$nsqdConf['port']);
         }
 
-        $this->proxyClient = $proxyClient;
+        $this->proxyClient = $proxyClient;*/
+
+        // 如果是发送到多个 nsqd 节点
+        $nsqdCount = $this->isTcpPub() ? count($this->producerTcpPool) : count($this->producerHttpPool);
+
+        switch ($pubClientType){
+            case self::PUB_ONE:
+                $this->pubSuccessCount = self::PUB_ONE;
+                break;
+            case self::PUB_TWO:
+                $this->pubSuccessCount = self::PUB_TWO;
+                break;
+            case self::PUB_QUORUM:
+                $this->pubSuccessCount = ceil($nsqdCount / 2) + 1;
+                break;
+            default:
+                throw new NsqException("Invalid nsqd publish type");
+        }
+
+        if ($this->pubSuccessCount > $nsqdCount) {
+            throw new NsqException("cannot publish so much node");
+        }
+
+        // 可以使用链式
+        return $this;
     }
 
     /**
@@ -108,24 +160,52 @@ class NsqClient {
      * @param String|array $message 一条或者多条记录
      */
     public function publish(String $topic, $message) {
-        // 如果是Http请求
+        // 如果是发送到多个 nsqd 节点
+        $isTcp = $this->isTcpPub();
         // 下一次个消息来的时候,统一需要实例化。 增加了实例化的次数 增加了内存的消耗
-        if ($this->proxyClient instanceof HttpClient) {
-            $this->publishViaHttp($topic, $message);
+        $hasSuccessCount = 0;
+        // 职责明确 职责明确
+        if ($isTcp) {
+            shuffle($this->producerTcpPool);
+            foreach ($this->producerTcpPool as $producer) {
+                $publishFlag = $this->publishViaTcp($producer,$topic, $message);
+                if ($publishFlag) {
+                    $hasSuccessCount ++;
+                }
+                // 已经发送了固定数量的nsqd 节点
+                if ($hasSuccessCount >= $this->pubSuccessCount) {
+                    break;
+                }
+            }
         } else {
-            $this->publishViaTcp($topic, $message);
+            shuffle($this->producerHttpPool);
+            foreach ($this->producerHttpPool as $producer) {
+                $publishFlag = $this->publishViaHttp($producer,$topic, $message);
+                if ($publishFlag) {
+                    $hasSuccessCount ++;
+                }
+                // 已经发送了固定数量的nsqd 节点
+                if ($hasSuccessCount >= $this->pubSuccessCount) {
+                    break;
+                }
+            }
+        }
+
+        if ($hasSuccessCount < $this->pubSuccessCount) {
+            throw new PublishException("Failed to publish so many node. You want to publish ".$this->pubSuccessCount." but only".$hasSuccessCount." has send");
         }
     }
 
     /**
      * 通过 Http 的方式发布信息
      *
+     * @param HttpClient $proxyClient  连接池里面的连接对象
      * @param String $topic
      * @param String|array $message
      * @throws NetworkSocketException
      * @return bool
      */
-    private function publishViaHttp(String $topic, $message){
+    private function publishViaHttp(HttpClient $proxyClient, String $topic, $message){
         // 拼装消息体
         if (is_array($message)) {
             $formatMessage = NsqHttpMessage::mpub($message);
@@ -134,9 +214,9 @@ class NsqClient {
             $formatMessage = NsqHttpMessage::pub($message);
             $url           = NsqHttpMessage::pubUrl($topic);
         }
-        $this->proxyClient->setUrl($url);
+        $proxyClient->setUrl($url);
 
-        list($error,$res) = $this->proxyClient->write($formatMessage);
+        list($error,$res) = $proxyClient->write($formatMessage);
 
         if ($error) { // 发送错误
             list($errNo,$errMsg) = $error;
@@ -156,39 +236,40 @@ class NsqClient {
     /**
      * 通过 TCP 的方式发布信息
      *
+     * @param AbstractProxyClient|TcpClient|SwooleClient $proxyClient
      * @param String $topic
      * @param String|array $message
      * @throws NetworkSocketException
      * @return bool
      */
-    private function publishViaTcp(String $topic, $message){
+    private function publishViaTcp(AbstractProxyClient $proxyClient,String $topic, $message){
         // 封装 message 后续可以封装成为一个方法,因为消息的多样性
         try {
-            // todo 命令规范
             if (is_array($message)) {
                 // pub 是一个动词 不能用来封装字符串 做些非动作 mark
+                // 看到pub 的时候,会让人以为消息已经发送
                 $formatMessage = NsqMessage::mpub($topic,$message);
             } else {
                 $formatMessage = NsqMessage::pub($topic,$message);
             }
             // 发送消息
-            $this->proxyClient->write($formatMessage);
+            $proxyClient->write($formatMessage);
 
             // 处理响应
-            $nsqResFormatArr = TcpResponseParse::readFormat($this->proxyClient);
+            $nsqResFormatArr = TcpResponseParse::readFormat($proxyClient);
 
             // 排除心跳
             $isHeartBeat = TcpResponseParse::isHeartBeat($nsqResFormatArr);
             while($isHeartBeat){
-                $this->proxyClient->write(NsqMessage::nop());
-
-                $nsqResFormatArr = TcpResponseParse::readFormat($this->proxyClient);
+                $proxyClient->write(NsqMessage::nop());
+                // 重读信息
+                $nsqResFormatArr = TcpResponseParse::readFormat($proxyClient);
             }
 
             $isPubSuccess = TcpResponseParse::isOk($nsqResFormatArr);
             if (!$isPubSuccess) {
                 Logger::ins()->error("failed to send message",[
-                    'domain'  => $this->proxyClient->getDomain(),
+                    'domain'  => $proxyClient->getDomain(),
                     'message' => $message
                 ]);
                 return false;
@@ -196,7 +277,8 @@ class NsqClient {
 
         } catch (\Exception $e) {
             // 发送失败的 处理
-            $this->proxyClient->reconnect();
+            $proxyClient->reconnect();
+            return false;
         }
 
         return true;
@@ -239,8 +321,6 @@ class NsqClient {
             // 所有的信息 放到 此步完成
             $conn->getSocket();
 
-
-
             // 使用 TCP的方式
             $conn = new TcpServer($nsqdConf['host'],$nsqdArr['port']);
             // 设置 topic 参数
@@ -277,5 +357,14 @@ class NsqClient {
         $tempNsqd = shuffle($nsqConf);
 
         return $tempNsqd[0];
+    }
+
+    /**
+     * 根据节点判断是够使用tcp 发送数据
+     *
+     * @return bool
+     */
+    private function isTcpPub(){
+        return strtolower($this->producerType) == "tcp" ;
     }
 }

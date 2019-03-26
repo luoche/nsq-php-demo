@@ -35,6 +35,10 @@ abstract class AbstractProxyClient implements ProxyClient {
 
     }
 
+    public function reconnect() {
+
+    }
+
     public function getDomain() {
         return $this->host . ':' . $this->port;
     }

@@ -12,4 +12,7 @@ interface ProxyClient {
     public function read(int $length): string ;
 
     public function write(string $buffer);
+
+    public function reconnect();
+
 }

@@ -94,4 +94,11 @@ class SwooleClient extends AbstractProxyClient {
             $this->socket->send(NsqMessage::magic());
         }
     }
+
+    /**
+     * 重新连接
+     */
+    public function reconnect() {
+        $this->getSocket(true);
+    }
 }

@@ -15,10 +15,18 @@ use nsqphp\Util\TcpResponseParse;
  */
 abstract class AbstractProxyServer implements ProxyServer  {
 
+    /**
+     * host
+     *
+     * @var string
+     */
     public $host;
-
+    /**
+     * prot
+     *
+     * @var int
+     */
     public $port;
-
     /**
      * 订阅的 topic
      *
@@ -76,12 +84,16 @@ abstract class AbstractProxyServer implements ProxyServer  {
         return $this->host . ':' . $this->port;
     }
 
+    /**
+     * 封装代码
+     *
+     * @param string $message
+     */
     public function readMessage(string $message) {
         $responseMessageFormat = TcpResponseParse::readFormatFromBuffer($message);
         // 区分不同 读取消息是一直读
         if (TcpResponseParse::isHeartBeat($responseMessageFormat)) {
             // 如果是心跳 就继续
-            // 可以把这个封装成一个方法 read
             $this->write(NsqMessage::nop());
         } else if(TcpResponseParse::isMessage($responseMessageFormat)){
             $receiveMsg = new Message($responseMessageFormat);
